@@ -155,7 +155,7 @@ public class ModalShareAnalysis {
         if (mainMode != "pt" && mainMode != "car" && mainMode != "ride" && mainMode != "walk" &&
                 mainMode != "bike") {
 
-            System.out.println(mainMode);
+            System.out.println("ERROR LINE 158" + mainMode);
             return "unknown";
         }
 
