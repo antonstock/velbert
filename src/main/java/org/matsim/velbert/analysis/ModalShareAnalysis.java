@@ -25,21 +25,31 @@ import java.util.Map;
 
 public class ModalShareAnalysis {
 
+    private static final CoordinateTransformation transformation = TransformationFactory.getCoordinateTransformation("EPSG:25832","EPSG:3857");
+
+    private static final String populationFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\v6\\plans.xml.gz";
+    private static final String shapeFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\openstreetmap\\OSM_PLZ_072019.shp";
+    private static final String networkFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\v6\\network.xml.gz";
+
+    private static final ArrayList<String> plz = new ArrayList();
+
     public static void main(String[] args) throws IOException {
+        //geometry hashmap
+        HashMap<String,Geometry> geometry = new HashMap<>();
+        //tripsPerMode hashmap
+        HashMap<String, Integer> tripsPerMode = new HashMap<>();
         //Printer
-        PrintWriter pWriter = new PrintWriter(new BufferedWriter(new FileWriter("C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\ModalShareAnalysis.csv")));
+        PrintWriter pWriter = new PrintWriter(new BufferedWriter(new FileWriter("C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\v6\\ModalShareAnalysis_v6.csv")));
+
+        var features = ShapeFileReader.getAllFeatures(shapeFilePath);
+        var network = NetworkUtils.readNetwork(networkFilePath);
+        var population = PopulationUtils.readPopulation(populationFilePath);
 
         //Postal codes
         plz.add("42551");
         plz.add("42549");
         plz.add("42555");
         plz.add("42553");
-
-        var features = ShapeFileReader.getAllFeatures(shapeFilePath);
-        var network = NetworkUtils.readNetwork(networkFilePath);
-        var population = PopulationUtils.readPopulation(populationFilePath);
-
-        HashMap<String,Geometry> geometry = new HashMap<>();
 
         for (String plz: plz){
 
@@ -55,14 +65,7 @@ public class ModalShareAnalysis {
         if(geometry.isEmpty()){
             System.out.println("No valid geometry.");
             return;
-//        } else {
-//            //TODO: übrig gebliebenes Bugfixing?
-//            for (Map.Entry<String,Geometry> geometryEntry: geometry.entrySet()){
-//                System.out.println(geometryEntry.getKey());
-//            }
         }
-
-        HashMap<String, Integer> tripsPerMode = new HashMap<>();
 
         for (var person: population.getPersons().values()){
 
@@ -120,36 +123,10 @@ public class ModalShareAnalysis {
     pWriter.close();
     }
 
-    private static final CoordinateTransformation transformation = TransformationFactory.getCoordinateTransformation("EPSG:25832","EPSG:3857");
-
-    /**Dateipfad individuell anpassen!*/
-    private static final String populationFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\plans.xml.gz";
-
-    private static final String shapeFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\openstreetmap\\OSM_PLZ_072019.shp";
-    private static final String networkFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\network.xml.gz";
-    private static final ArrayList<String> plz = new ArrayList();
-
-    private static Coord getCoord(Activity activity, Network network) {
-
-        if (activity.getCoord() != null) {
-            return activity.getCoord();
-        }
-
-        return network.getLinks().get(activity.getLinkId()).getCoord();
-    }
-
     private static boolean isInGeometry(Coord coord, Geometry geometry) {
 
         var transformed = transformation.transform(coord);
         return geometry.covers(MGC.coord2Point(transformed));
-    }
-
-    private static Geometry getGeometry(String identifier, Collection<SimpleFeature> features) {
-        return features.stream()
-                .filter(feature -> feature.getAttribute("plz").equals(identifier))
-                .map(feature -> (Geometry) feature.getDefaultGeometry())
-                .findAny()
-                .orElseThrow();
     }
 
     private static String getMainMode(Collection<Leg> legList){
