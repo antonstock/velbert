@@ -14,43 +14,121 @@ import org.matsim.core.utils.geometry.transformations.TransformationFactory;
 import org.matsim.core.utils.gis.ShapeFileReader;
 import org.opengis.feature.simple.SimpleFeature;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
 public class ModalShareAnalysis {
-
+    private static final String version = "v15";
     private static final CoordinateTransformation transformation = TransformationFactory.getCoordinateTransformation("EPSG:25832","EPSG:3857");
 
-    /**Dateipfad individuell anpassen!*/
-    private static final String populationFilePath = "C:\\Users\\ACER\\Desktop\\Uni\\MATSim\\Hausaufgabe_1\\Output\\it.300\\velbert-v1.0-1pct.300.plans.xml.gz";
+    private static final String populationFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\"+version+"\\velbert-v1.0-1pct.output_plans.xml";
+    private static final String shapeFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\openstreetmap\\OSM_PLZ_072019.shp";
+    private static final String networkFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\"+version+"\\velbert-v1.0-1pct.output_network.xml";
 
-    private static final String shapeFilePath = "C:\\Users\\ACER\\Desktop\\Uni\\MATSim\\Hausaufgabe_1\\Shapes\\OSM_PLZ_072019.shp";
-    private static final String networkFilePath = "C:\\Users\\ACER\\Desktop\\Uni\\MATSim\\Hausaufgabe_1\\Output\\it.300\\velbert-v1.0-1pct.output_network.xml.gz";
     private static final ArrayList<String> plz = new ArrayList();
 
-    private static Coord getCoord(Activity activity, Network network) {
+    public static void main(String[] args) throws IOException {
+        //geometry hashmap
+        HashMap<String,Geometry> geometry = new HashMap<>();
+        //tripsPerMode hashmap
+        HashMap<String, Integer> tripsPerMode = new HashMap<>();
+        //Printer
+        PrintWriter pWriter = new PrintWriter(new BufferedWriter(new FileWriter("C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\"+version+"\\ModalShareAnalysis_"+version+".csv")));
 
-        if (activity.getCoord() != null) {
-            return activity.getCoord();
+        var features = ShapeFileReader.getAllFeatures(shapeFilePath);
+        var network = NetworkUtils.readNetwork(networkFilePath);
+        var population = PopulationUtils.readPopulation(populationFilePath);
+
+        //Postal codes
+        plz.add("42551");
+        plz.add("42549");
+        plz.add("42555");
+        plz.add("42553");
+
+        for (String plz: plz){
+
+            var tempGeometry = features.stream().
+                    filter(feature -> feature.getAttribute("plz").equals(plz)).
+                    map(feature -> (Geometry) feature.getDefaultGeometry()).
+                    findAny().
+                    orElseThrow();
+
+            geometry.put(plz, tempGeometry);
         }
 
-        return network.getLinks().get(activity.getLinkId()).getCoord();
+        if(geometry.isEmpty()){
+            System.out.println("No valid geometry.");
+            return;
+        }
+
+        for (var person: population.getPersons().values()){
+
+            var plan = person.getSelectedPlan();
+            var trips = TripStructureUtils.getTrips(plan);
+
+            for (var trip: trips){
+
+                for (String orgPlz:  plz){
+
+                    /**check if shape covers origin activity*/
+                    if (isInGeometry(trip.getOriginActivity().getCoord(),geometry.get(orgPlz))){
+
+                        for (String destPlz: plz){
+
+                            /**check if shape covers origin activity*/
+                            if (isInGeometry(trip.getDestinationActivity().getCoord(),geometry.get(destPlz))){
+
+                                /**using the legs to compute the main mode and increment the counter in the tripsPerMode
+                                 * map*/
+
+                                var legs = trip.getLegsOnly();
+                                String mainMode = getMainMode(legs);
+
+                                if (mainMode == null) continue;
+
+                                if (!tripsPerMode.containsKey(mainMode)){
+                                    tripsPerMode.put(mainMode,1);
+                                } else {
+                                    tripsPerMode.put(mainMode,tripsPerMode.get(mainMode)+1);
+                                }
+
+                            }
+
+                            break;
+                        }
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        int totalNumberOfTrips = convertAndSumUp(tripsPerMode);
+
+        HashMap<String, Double> modalShare = getModalShare(tripsPerMode, totalNumberOfTrips);
+
+        //Ausgabe in ModalShareAnalysis.csv:
+        pWriter.println("Trips per mode:");
+        for (Map.Entry<String, Integer> entry : tripsPerMode.entrySet()) {
+            pWriter.println(entry.getKey()+";"+entry.getValue().toString());
+        }
+        pWriter.println("Modal share:");
+        for (Map.Entry<String,Double> entry: modalShare.entrySet()){
+            pWriter.println(entry.getKey() + ";" + entry.getValue().toString());
+        }
+        pWriter.close();
     }
 
     private static boolean isInGeometry(Coord coord, Geometry geometry) {
 
         var transformed = transformation.transform(coord);
         return geometry.covers(MGC.coord2Point(transformed));
-    }
-
-    private static Geometry getGeometry(String identifier, Collection<SimpleFeature> features) {
-        return features.stream()
-                .filter(feature -> feature.getAttribute("plz").equals(identifier))
-                .map(feature -> (Geometry) feature.getDefaultGeometry())
-                .findAny()
-                .orElseThrow();
     }
 
     private static String getMainMode(Collection<Leg> legList){
@@ -75,12 +153,7 @@ public class ModalShareAnalysis {
             }
         }
 
-        if (mainMode != "pt" && mainMode != "car" && mainMode != "ride" && mainMode != "walk" &&
-                mainMode != "bike") {
-
-            System.out.println(mainMode);
-            return "unknown";
-        }
+        if (longestDistance == 0.0) return null;
 
         return mainMode;
     }
@@ -110,102 +183,5 @@ public class ModalShareAnalysis {
         }
 
         return modalShare;
-    }
-
-
-    public static void main(String[] args) {
-
-        plz.add("42551");
-        plz.add("42549");
-        plz.add("42555");
-        plz.add("42553");
-
-
-        var features = ShapeFileReader.getAllFeatures(shapeFilePath);
-        var network = NetworkUtils.readNetwork(networkFilePath);
-        var population = PopulationUtils.readPopulation(populationFilePath);
-
-        HashMap<String,Geometry> geometry = new HashMap<>();
-
-        for (String plz: plz){
-
-            var tempGeometry = features.stream().
-                    filter(feature -> feature.getAttribute("plz").equals(plz)).
-                    map(feature -> (Geometry) feature.getDefaultGeometry()).
-                    findAny().
-                    orElseThrow();
-
-            geometry.put(plz, tempGeometry);
-        }
-
-        if(geometry.isEmpty()){
-            System.out.println("Keine Geometriy ausgewählt!");
-            return;
-        } else {
-
-            for (Map.Entry<String,Geometry> geometryEntry: geometry.entrySet()){
-
-                System.out.println(geometryEntry.getKey());
-            }
-        }
-
-        HashMap<String, Integer> tripsPerMode = new HashMap<>();
-
-        for (var person: population.getPersons().values()){
-
-            var plan = person.getSelectedPlan();
-            var trips = TripStructureUtils.getTrips(plan);
-
-            for (var trip: trips){
-
-                for (String orgPlz:  plz){
-
-                    /**check if shape covers origin activity*/
-                    if (isInGeometry(trip.getOriginActivity().getCoord(),geometry.get(orgPlz))){
-
-                        for (String destPlz: plz){
-
-                            /**check if shape covers origin activity*/
-                            if (isInGeometry(trip.getDestinationActivity().getCoord(),geometry.get(destPlz))){
-
-                                /**using the legs to compute the main mode and increment the counter in the tripsPerMode
-                                 * map*/
-
-                                var legs = trip.getLegsOnly();
-                                String mainMode = getMainMode(legs);
-
-                                if (!tripsPerMode.containsKey(mainMode)){
-                                    tripsPerMode.put(mainMode,1);
-                                } else {
-                                    tripsPerMode.put(mainMode,tripsPerMode.get(mainMode)+1);
-                                }
-
-                            }
-
-                            break;
-                        }
-
-                        break;
-                    }
-                }
-            }
-        }
-
-        int totalNumberOfTrips = convertAndSumUp(tripsPerMode);
-
-        HashMap<String, Double> modalShare = getModalShare(tripsPerMode, totalNumberOfTrips);
-
-        System.out.println("Trips per mode:");
-        for (Map.Entry<String,Integer> entry: tripsPerMode.entrySet()){
-
-            System.out.println(entry.getKey() + ": " + entry.getValue().toString());
-        }
-
-        System.out.println("Modal share in percent:");
-        for (Map.Entry<String,Double> entry: modalShare.entrySet()){
-
-            System.out.println(entry.getKey() + ": " + entry.getValue().toString());
-        }
-
     }
 }
