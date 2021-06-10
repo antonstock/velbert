@@ -1,4 +1,3 @@
-##########UPDATE#############
 package org.matsim.velbert.analysis;
 
 import org.locationtech.jts.geom.Geometry;
@@ -25,12 +24,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ModalShareAnalysis {
-
+    private static final String version = "v15";
     private static final CoordinateTransformation transformation = TransformationFactory.getCoordinateTransformation("EPSG:25832","EPSG:3857");
 
-    private static final String populationFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\v6\\plans.xml.gz";
+    private static final String populationFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\"+version+"\\velbert-v1.0-1pct.output_plans.xml";
     private static final String shapeFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\openstreetmap\\OSM_PLZ_072019.shp";
-    private static final String networkFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\v6\\network.xml.gz";
+    private static final String networkFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\"+version+"\\velbert-v1.0-1pct.output_network.xml";
 
     private static final ArrayList<String> plz = new ArrayList();
 
@@ -40,7 +39,7 @@ public class ModalShareAnalysis {
         //tripsPerMode hashmap
         HashMap<String, Integer> tripsPerMode = new HashMap<>();
         //Printer
-        PrintWriter pWriter = new PrintWriter(new BufferedWriter(new FileWriter("C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\v6\\ModalShareAnalysis_v6.csv")));
+        PrintWriter pWriter = new PrintWriter(new BufferedWriter(new FileWriter("C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\"+version+"\\ModalShareAnalysis_"+version+".csv")));
 
         var features = ShapeFileReader.getAllFeatures(shapeFilePath);
         var network = NetworkUtils.readNetwork(networkFilePath);
@@ -155,7 +154,7 @@ public class ModalShareAnalysis {
         if (mainMode != "pt" && mainMode != "car" && mainMode != "ride" && mainMode != "walk" &&
                 mainMode != "bike") {
 
-            System.out.println(mainMode);
+            System.out.println("ERROR LINE 157" + mainMode);
             return "unknown";
         }
 
