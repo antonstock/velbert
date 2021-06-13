@@ -24,12 +24,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ModalShareAnalysis {
-    private static final String version = "v15";
+    private static final String version = "V53";
     private static final CoordinateTransformation transformation = TransformationFactory.getCoordinateTransformation("EPSG:25832","EPSG:3857");
 
-    private static final String populationFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\"+version+"\\velbert-v1.0-1pct.output_plans.xml";
-    private static final String shapeFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\openstreetmap\\OSM_PLZ_072019.shp";
-    private static final String networkFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\"+version+"\\velbert-v1.0-1pct.output_network.xml";
+    private static final String populationFilePathTemp = "C:\\Users\\ACER\\Desktop\\Uni\\MATSim\\Hausaufgabe_1\\Kalibrierung\\V27\\velbert-v1.0-1pct.output_plans.xml.gz";
+    private static final String populationFilePath = "C:\\Users\\ACER\\Desktop\\Uni\\MATSim\\Hausaufgabe_1\\Kalibrierung\\"+version+"\\velbert"+version+".output_plans.xml.gz";
+    private static final String shapeFilePath = "C:\\Users\\ACER\\Desktop\\Uni\\MATSim\\Hausaufgabe_1\\Shapes\\OSM_PLZ_072019.shp";
+    private static final String networkFilePath = "C:\\Users\\ACER\\Desktop\\Uni\\MATSim\\Hausaufgabe_1\\Output\\v4\\velbert-v3.0-1pct.output_network.xml.gz";
 
     private static final ArrayList<String> plz = new ArrayList();
 
@@ -39,7 +40,8 @@ public class ModalShareAnalysis {
         //tripsPerMode hashmap
         HashMap<String, Integer> tripsPerMode = new HashMap<>();
         //Printer
-        PrintWriter pWriter = new PrintWriter(new BufferedWriter(new FileWriter("C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\"+version+"\\ModalShareAnalysis_"+version+".csv")));
+        PrintWriter pWriter = new PrintWriter(
+                new BufferedWriter(new FileWriter("C:\\Users\\ACER\\Desktop\\Uni\\MATSim\\Hausaufgabe_1\\Analyse\\ModalShareAnalysis"+version+".csv")));
 
         var features = ShapeFileReader.getAllFeatures(shapeFilePath);
         var network = NetworkUtils.readNetwork(networkFilePath);
@@ -125,7 +127,7 @@ public class ModalShareAnalysis {
         pWriter.close();
     }
 
-    private static boolean isInGeometry(Coord coord, Geometry geometry) {
+    public static boolean isInGeometry(Coord coord, Geometry geometry) {
 
         var transformed = transformation.transform(coord);
         return geometry.covers(MGC.coord2Point(transformed));
