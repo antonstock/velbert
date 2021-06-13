@@ -1,4 +1,3 @@
-
 package org.matsim.velbert.analysis;
 
 import org.locationtech.jts.geom.Geometry;
@@ -25,12 +24,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ModalShareAnalysis {
+    private static final String version = "V53";
 
     private static final CoordinateTransformation transformation = TransformationFactory.getCoordinateTransformation("EPSG:25832","EPSG:3857");
 
-    private static final String populationFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\v6\\plans.xml.gz";
-    private static final String shapeFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\openstreetmap\\OSM_PLZ_072019.shp";
-    private static final String networkFilePath = "C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\v6\\network.xml.gz";
+    private static final String populationFilePath = "C:\\Users\\ACER\\Desktop\\Uni\\MATSim\\Hausaufgabe_1\\Kalibrierung\\"+version+"\\velbert"+version+".output_plans.xml.gz";
+    private static final String shapeFilePath = "C:\\Users\\ACER\\Desktop\\Uni\\MATSim\\Hausaufgabe_1\\Shapes\\OSM_PLZ_072019.shp";
+    private static final String networkFilePath = "C:\\Users\\ACER\\Desktop\\Uni\\MATSim\\Hausaufgabe_1\\Output\\v4\\velbert-v3.0-1pct.output_network.xml.gz";
 
     private static final ArrayList<String> plz = new ArrayList();
 
@@ -40,7 +40,8 @@ public class ModalShareAnalysis {
         //tripsPerMode hashmap
         HashMap<String, Integer> tripsPerMode = new HashMap<>();
         //Printer
-        PrintWriter pWriter = new PrintWriter(new BufferedWriter(new FileWriter("C:\\Users\\anton\\IdeaProjects\\Hausaufgaben\\HA1\\output\\v6\\ModalShareAnalysis_v6.csv")));
+        PrintWriter pWriter = new PrintWriter(
+                new BufferedWriter(new FileWriter("C:\\Users\\ACER\\Desktop\\Uni\\MATSim\\Hausaufgabe_1\\Analyse\\ModalShareAnalysis"+version+".csv")));
 
         var features = ShapeFileReader.getAllFeatures(shapeFilePath);
         var network = NetworkUtils.readNetwork(networkFilePath);
@@ -91,6 +92,8 @@ public class ModalShareAnalysis {
                                 var legs = trip.getLegsOnly();
                                 String mainMode = getMainMode(legs);
 
+                                if (mainMode == null) continue;
+
                                 if (!tripsPerMode.containsKey(mainMode)){
                                     tripsPerMode.put(mainMode,1);
                                 } else {
@@ -121,10 +124,10 @@ public class ModalShareAnalysis {
         for (Map.Entry<String,Double> entry: modalShare.entrySet()){
             pWriter.println(entry.getKey() + ";" + entry.getValue().toString());
         }
-    pWriter.close();
+        pWriter.close();
     }
 
-    private static boolean isInGeometry(Coord coord, Geometry geometry) {
+    public static boolean isInGeometry(Coord coord, Geometry geometry) {
 
         var transformed = transformation.transform(coord);
         return geometry.covers(MGC.coord2Point(transformed));
@@ -152,12 +155,7 @@ public class ModalShareAnalysis {
             }
         }
 
-        if (mainMode != "pt" && mainMode != "car" && mainMode != "ride" && mainMode != "walk" &&
-                mainMode != "bike") {
-
-            System.out.println("ERROR LINE 158" + mainMode);
-            return "unknown";
-        }
+        if (longestDistance == 0.0) return null;
 
         return mainMode;
     }
